@@ -64,7 +64,7 @@ try {
         for ($i = 0; $i -lt 180; $i++) {
             $socket = New-Object System.Net.Sockets.TcpClient
             try {
-                $socket.Connect('127.0.0.1', 5173)
+                $socket.Connect('localhost', 5173)
                 Start-Process $targetUrl
                 return
             } catch {

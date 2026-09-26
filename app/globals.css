@@ -56,7 +56,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 .task .done{color:#776e63}.task-delete{border:0;background:transparent;color:#aa947e;opacity:0}.task:hover .task-delete,.task-delete:focus-visible{opacity:1}
 .add-todo,.todo-form{display:flex;align-items:center;gap:12px;color:#a2775b;margin-top:15px;background:transparent;border:0;padding:7px}
 .todo-form input{width:100%;padding:9px;border:1px solid #e7d8c7;background:#fffdf8;border-radius:9px;min-width:0}.todo-form button{border:0;background:transparent;color:#6c7b5d}
-.tasks-art{position:absolute;bottom:0;left:-45px;right:0;height:230px;pointer-events:none;background-image:url('/fox-header.png');background-size:390px auto;background-position:left bottom;background-repeat:no-repeat;opacity:.55}
+.tasks-art{position:absolute;bottom:0;left:0;right:0;height:230px;pointer-events:none;background-image:url('/fox-header.png');background-size:390px auto;background-position:center bottom;background-repeat:no-repeat;opacity:.55}
 .collapsed{padding:20px 9px}.collapsed .tasks-heading{flex-direction:column;gap:20px}.collapsed .tasks-heading>span{font-size:25px}.collapsed-mark{text-align:center;font-size:27px}
 .center-panel{padding:35px 24px 20px;display:flex;flex-direction:column;min-height:760px}
 .month-heading{display:flex;align-items:center;justify-content:center;gap:32px;margin:0 auto 26px}
@@ -172,7 +172,13 @@ h1,h2,h3,p{margin-top:0}.month-heading h1,.editor-header h1{font-weight:400;colo
 }
 
 .tasks-date{position:relative;z-index:1;display:flex;flex-direction:column;gap:7px;margin:-4px 0 12px;color:#94765f;font-size:13px}
-.tasks-date input{box-sizing:border-box;width:100%;min-width:0;border:1px solid #e4d6c5;border-radius:10px;background:#fffaf4;color:#604736;padding:9px 11px;font:15px Arial,sans-serif}
+.tasks-date>span{font-size:13px}
+.tasks-date button{box-sizing:border-box;width:100%;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid #e4d6c5;border-radius:10px;background:#fffaf4;color:#604736;padding:9px 11px;text-align:left;font:15px Arial,sans-serif}
+.tasks-date button:hover{background:#f9ebdc}.tasks-date button svg{flex:none;color:#bd704a}
+.tasks-calendar-popover{width:min(304px,calc(100vw - 20px));padding:10px;border-color:#dfc9af;border-radius:16px;background:#fffaf2;box-shadow:0 14px 38px #6b46232b;color:#593d2c}
+.tasks-calendar{--cell-size:34px;background:transparent;color:#593d2c}
+.tasks-calendar [data-selected-single=true]{background:#bd704a;color:#fffaf1}
+.tasks-calendar button:hover:not([data-selected-single=true]){background:#f6dfc8;color:#593d2c}
 .tasks-empty{position:relative;z-index:1;color:#9b806a;font-size:14px;line-height:1.45;margin:18px 0}
 .day.task-selected{z-index:1;box-shadow:inset 0 0 0 2px #a7b78f}
 .task-count{position:absolute;top:8px;right:8px;min-width:23px;height:23px;padding:0 5px;display:grid;place-items:center;border-radius:12px;background:#e1ead7;color:#526849;font:600 12px Arial,sans-serif}

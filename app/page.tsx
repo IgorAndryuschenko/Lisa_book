@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Feather, Mic, Pause, Play, Plus, Save, Square, Trash2, X, PawPrint } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ru } from "date-fns/locale";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { transcribeLocally } from "./local-transcribe";
 import WritingBoard from "./writing-board";
@@ -41,6 +44,7 @@ export default function HomePage(){
   const [month,setMonth]=useState(()=>new Date(today.getFullYear(),today.getMonth(),1));
   const [selected,setSelected]=useState<string|null>(null);
   const [taskDate,setTaskDate]=useState(dateKey(today));
+  const [taskCalendarOpen,setTaskCalendarOpen]=useState(false);
   const [editorDate,setEditorDate]=useState(dateKey(today));
   const [page,setPage]=useState<"calendar"|"editor">("calendar");
   const [section,setSection]=useState<"diary"|"writing">("diary");
@@ -124,10 +128,11 @@ export default function HomePage(){
   const chosen=page==="editor"?editorDate:(selected??dateKey(today));
   const dayEntries=entries.filter(e=>e.date===chosen).sort((a,b)=>a.time.localeCompare(b.time));
   const dayTodos=todos.filter(todo=>todo.date===taskDate);
+  const selectedTaskDate=useMemo(()=>{const [year,number,day]=taskDate.split("-").map(Number);return new Date(year,number-1,day);},[taskDate]);
   const offset=(new Date(month.getFullYear(),month.getMonth(),1).getDay()+6)%7;
   const monthLength=new Date(month.getFullYear(),month.getMonth()+1,0).getDate();
   const cells=Array.from({length:Math.ceil((offset+monthLength)/7)*7},(_,i)=>i-offset+1);
-  const showDate=(date:string,openEntries=false)=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return;const [year,number]=date.split("-").map(Number);setMonth(new Date(year,number-1,1));setTaskDate(date);setSelected(openEntries?date:null);setAddingTodo(false);setTodoText("");};
+  const showDate=(date:string,openEntries=false)=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return;const [year,number]=date.split("-").map(Number);setMonth(new Date(year,number-1,1));setTaskDate(date);setTaskCalendarOpen(false);setSelected(openEntries?date:null);setAddingTodo(false);setTodoText("");};
   const changeMonth=(n:number)=>showDate(dateKey(new Date(month.getFullYear(),month.getMonth()+n,1)));
   const openEditor=(date:string,entry?:Entry)=>{setTaskDate(date);setEditorDate(date);setSelected(null);setEditId(entry?.id??null);setMode(entry?.kind??"text");setTab(entry?.kind==="voice"?"emoji":"stickers");setText(entry?.text??"");setAttached(entry?.sticker);setTranscript(entry?.transcript??"");setSeconds(entry?.duration??0);setBlob(null);setPage("editor");};
   const goBack=()=>{if(recording)recorder.current?.stop();setPage("calendar");setSelected(null);setEditId(null);};
@@ -163,7 +168,7 @@ export default function HomePage(){
       <aside className={`tasks-panel ${tasksOpen?"":"collapsed"}`}>
         <div className="tasks-heading"><span>❧</span>{tasksOpen&&<h2>Дела</h2>}<button aria-label={tasksOpen?"Скрыть список дел":"Показать список дел"} onClick={()=>setTasksOpen(!tasksOpen)}>{tasksOpen?<ChevronLeft size={18}/>:<ChevronRight size={18}/>}</button></div>
         {tasksOpen?<>
-          <label className="tasks-date">На дату<input type="date" value={taskDate} onChange={event=>showDate(event.target.value)} aria-label="Дата дел"/></label>
+          <div className="tasks-date"><span>На дату</span><Popover open={taskCalendarOpen} onOpenChange={setTaskCalendarOpen}><PopoverTrigger asChild><button type="button" aria-label="Выбрать дату дел" aria-expanded={taskCalendarOpen}><span>{pretty(taskDate)}</span><CalendarDays size={18} aria-hidden="true"/></button></PopoverTrigger><PopoverContent align="start" sideOffset={8} className="tasks-calendar-popover"><Calendar mode="single" required selected={selectedTaskDate} defaultMonth={selectedTaskDate} onSelect={date=>{if(date)showDate(dateKey(date));}} locale={ru} weekStartsOn={1} showOutsideDays={false} className="tasks-calendar"/></PopoverContent></Popover></div>
           <div className="tasks-list">{dayTodos.length?dayTodos.map(todo=><div className="task" key={todo.id}><label><input type="checkbox" checked={todo.done} onChange={()=>void toggleTodo(todo)}/><span className={todo.done?"done":""}>{todo.text}</span></label><button className="task-delete" aria-label="Удалить дело" onClick={()=>void deleteTodo(todo)}><X size={15}/></button></div>):<p className="tasks-empty">На этот день дел пока нет.</p>}</div>
           {addingTodo?<form className="todo-form" onSubmit={event=>{event.preventDefault();void addTodo();}}><input autoFocus value={todoText} onChange={event=>setTodoText(event.target.value)} placeholder="Новое дело" maxLength={120}/><button aria-label="Сохранить дело"><Check size={18}/></button></form>:<button className="add-todo" onClick={()=>setAddingTodo(true)}><Plus size={20}/> Добавить дело</button>}
           <div className="tasks-art" aria-hidden="true"/>

@@ -1,7 +1,7 @@
 import { getOwner, getStorage, unavailable, unauthorized, validId } from "../../../db/storage";
 
 type EntryInput = { id: string; date: string; time: string; kind: "text"|"voice"; text: string; transcript?: string; audioId?: string; duration?: number; sticker?: string };
-type TodoInput = { id: string; text: string; done: boolean };
+type TodoInput = { id: string; date: string; text: string; done: boolean };
 
 export async function GET(request: Request) {
   const owner = getOwner(request);
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const { db } = getStorage();
     const [entries, todos, stickers] = await Promise.all([
       db.prepare("SELECT id, date, time, kind, text, transcript, audio_key AS audioId, duration, sticker FROM entries WHERE owner_id = ? ORDER BY date, time").bind(owner).all(),
-      db.prepare("SELECT id, text, done FROM todos WHERE owner_id = ? ORDER BY rowid").bind(owner).all(),
+      db.prepare("SELECT todos.id, todo_dates.date, todos.text, todos.done FROM todos JOIN todo_dates ON todo_dates.todo_id = todos.id WHERE todos.owner_id = ? ORDER BY todos.rowid").bind(owner).all(),
       db.prepare("SELECT id FROM stickers WHERE owner_id = ? ORDER BY rowid").bind(owner).all(),
     ]);
     return Response.json({ entries: entries.results, todos: todos.results.map(todo => ({ ...todo, done: Boolean(todo.done) })), stickers: stickers.results.map(s => `/api/stickers/${s.id}`) }, { headers: { "Cache-Control": "no-store" } });
@@ -40,12 +40,20 @@ export async function POST(request: Request) {
     }
     if (payload.op === "todo-upsert" && payload.todo) {
       const todo = payload.todo;
-      if (!validId(todo.id) || typeof todo.text !== "string" || !todo.text.trim() || todo.text.length > 120 || typeof todo.done !== "boolean") return Response.json({ error: "Проверьте текст дела" }, { status: 400 });
-      await db.prepare("INSERT INTO todos (id,owner_id,text,done) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET text=excluded.text,done=excluded.done WHERE owner_id=excluded.owner_id").bind(todo.id, owner, todo.text.trim(), todo.done ? 1 : 0).run();
+      if (!validId(todo.id) || !/^\d{4}-\d{2}-\d{2}$/.test(todo.date) || typeof todo.text !== "string" || !todo.text.trim() || todo.text.length > 120 || typeof todo.done !== "boolean") return Response.json({ error: "Проверьте дату и текст дела" }, { status: 400 });
+      const existing = await db.prepare("SELECT owner_id FROM todos WHERE id = ?").bind(todo.id).first<{owner_id:string}>();
+      if (existing && existing.owner_id !== owner) return Response.json({ error: "Дело не найдено" }, { status: 404 });
+      await db.batch([
+        db.prepare("INSERT INTO todos (id,owner_id,text,done) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET text=excluded.text,done=excluded.done WHERE owner_id=excluded.owner_id").bind(todo.id, owner, todo.text.trim(), todo.done ? 1 : 0),
+        db.prepare("INSERT INTO todo_dates (todo_id,date) VALUES (?,?) ON CONFLICT(todo_id) DO UPDATE SET date=excluded.date").bind(todo.id, todo.date),
+      ]);
       return Response.json({ ok: true });
     }
     if (payload.op === "todo-delete" && payload.id && validId(payload.id)) {
-      await db.prepare("DELETE FROM todos WHERE id = ? AND owner_id = ?").bind(payload.id, owner).run();
+      await db.batch([
+        db.prepare("DELETE FROM todo_dates WHERE todo_id = ? AND EXISTS (SELECT 1 FROM todos WHERE id = ? AND owner_id = ?)").bind(payload.id, payload.id, owner),
+        db.prepare("DELETE FROM todos WHERE id = ? AND owner_id = ?").bind(payload.id, owner),
+      ]);
       return Response.json({ ok: true });
     }
     return Response.json({ error: "Неизвестная операция" }, { status: 400 });

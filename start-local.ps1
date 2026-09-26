@@ -42,7 +42,7 @@ try {
 
     # IF NOT EXISTS сохраняет ранее созданные таблицы и записи при повторном запуске.
     New-Item -ItemType Directory -Force -Path '.wrangler' | Out-Null
-    $migrationFiles = @('drizzle/0000_thankful_spitfire.sql', 'drizzle/0001_next_storm.sql')
+    $migrationFiles = @('drizzle/0000_thankful_spitfire.sql', 'drizzle/0001_next_storm.sql', 'drizzle/0002_rapid_ben_grimm.sql')
     for ($i = 0; $i -lt $migrationFiles.Count; $i++) {
         $migration = Get-Content -LiteralPath $migrationFiles[$i] -Raw
         $migration = $migration.Replace('CREATE TABLE ', 'CREATE TABLE IF NOT EXISTS ').Replace('CREATE INDEX ', 'CREATE INDEX IF NOT EXISTS ')
@@ -50,6 +50,13 @@ try {
         [System.IO.File]::WriteAllText($migrationFile, $migration, [System.Text.UTF8Encoding]::new($false))
         Run-Step 'Проверяю таблицы...' $node.Source @('--import', './scripts/sites-env.mjs', './node_modules/wrangler/bin/wrangler.js', 'd1', 'execute', 'DB', '--local', '--config', 'dist/server/wrangler.json', '--persist-to', '.wrangler/state', '--file', $migrationFile)
     }
+
+    # Use the computer's date: the SQLite worker may use UTC even on Windows.
+    $todayKey = Get-Date -Format 'yyyy-MM-dd'
+    $todoBackfillFile = Join-Path $PSScriptRoot '.wrangler/local-todo-backfill.sql'
+    $todoBackfill = "INSERT OR IGNORE INTO todo_dates (todo_id, date) SELECT id, '$todayKey' FROM todos;"
+    [System.IO.File]::WriteAllText($todoBackfillFile, $todoBackfill, [System.Text.UTF8Encoding]::new($false))
+    Run-Step 'Привязываю прежние дела к дате...' $node.Source @('--import', './scripts/sites-env.mjs', './node_modules/wrangler/bin/wrangler.js', 'd1', 'execute', 'DB', '--local', '--config', 'dist/server/wrangler.json', '--persist-to', '.wrangler/state', '--file', $todoBackfillFile)
 
     $url = 'http://localhost:5173/'
     Start-Job -ArgumentList $url -ScriptBlock {

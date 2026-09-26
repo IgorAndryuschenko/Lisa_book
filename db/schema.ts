@@ -20,6 +20,11 @@ export const todos = sqliteTable("todos", {
   done: integer("done", { mode: "boolean" }).notNull().default(false),
 }, table => [index("idx_todos_owner").on(table.ownerId)]);
 
+export const todoDates = sqliteTable("todo_dates", {
+  todoId: text("todo_id").primaryKey(),
+  date: text("date").notNull(),
+}, table => [index("idx_todo_dates_date").on(table.date)]);
+
 export const stickers = sqliteTable("stickers", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
